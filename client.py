@@ -61,18 +61,28 @@ def split_url(url):
 	if proto == "https":
 		port = 443
 	ind = url[1].find("/")
+	portind = url[1].find(":")
 	if ind != -1:
-		host = url[1][:ind]
-		path = url[1][ind:]
+		if portind != -1:
+			host = url[1][:portind]
+			port = url[1][portind:ind].strip(":")
+			path = url[1][ind:]
+		else:
+			host = url[1][:ind]
+			path = url[1][ind:]
 	else:
-		host = url[1]
+		if portind != -1:
+			host = url[1][:portind]
+			port = url[1][portind:].strip(":")
+		else:
+			host = url[1]
 	return proto,host,path,port
 
 def send_request(method, url):
 	proto, host, path, port = split_url(url)
 	#print(proto,host,path,port)
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.connect((host, port))
+	s.connect((host, int(port)))
 	
 	verboselog(f"Connected to {host}:{port}")
 	if proto == "https":
@@ -103,9 +113,11 @@ def send_request(method, url):
 	return response.decode()
    
 def handle_response(response):
+	if response == "":
+		print("Server responded, but returned empty response.")
+		exit()
 	ind = response.find("\r\n\r\n")
 	headers, data = response.split("\r\n\r\n")[0], response[ind:]
-	
 	return headers, data, headers.split()[1]
 def get(url):
 	response = send_request("GET", url)
@@ -169,7 +181,10 @@ def httpclient(url):
 		print("<--------")
 		print(headers, "\n", data)
 	else:
-		print(data)
+		if args.method == "HEAD":
+			print(headers)
+		if not args.head:
+			print(data)
 	if args.output:
 		with open(args.output, "w") as f:
 			if args.save_headers:
@@ -177,7 +192,7 @@ def httpclient(url):
 			f.write(data)
 	if status == "301" or status == "302" or status == "307":
 		if not args.no_redirect:
-			if redirects_count > max_redirect:
+			if redirect_count > max_redirect:
 				print("Hit max redirects count... Exiting")
 				exit()
 			verboselog("Redirecting to location from response...")
