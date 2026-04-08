@@ -1,6 +1,5 @@
 from core.client import *
 import sys
-
 NOT_SET = object()
 parser = argparse.ArgumentParser()
 parser.add_argument("-u", "--url", required=True, help="URL to send request") 
